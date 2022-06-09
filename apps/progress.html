@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Process</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .inner {
+        background-color: rgb(0, 147, 252);
+      }
+    </style>
+  </head>
+  <body class="h-screen p-12">
+    <div class="root rounded-xl px-4 py-3 h-full bg-slate-900/10 hover:bg-slate-900/50">
+      <h1 x-data class="text-xl text-center text-white">
+        <span class="bg-gray-900/50 p-1 rounded">Life Process<span x-text="$store.progress.timestamp"></span></span>
+      </h1>
+      <section x-data>
+        <ul class="text-white font-extrabold">
+          <template x-for="dim in $store.progress.dimensions">
+            <li class="flex my-2 gap-2">
+              <span x-text="dim.name" class="leading-[30px] bg-gray-900/50 px-1 rounded"></span>
+              <div class="flex grow bg-gray-900/50">
+                <div
+                  x-bind:style="{width: dim.percent}"
+                  x-text="dim.percent"
+                  class="inner text-sm leading-[30px] indent-2"
+                ></div>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </section>
+    </div>
+
+    <script type="module">
+      import Alpine from "https://unpkg.com/alpinejs@3.10.2/dist/module.esm.js";
+      window.Alpine = Alpine;
+
+      const TM = [
+        "getFullYear",
+        "getMonth",
+        "getDate",
+        "getHours",
+        "getMinutes",
+        "getSeconds",
+        "getMilliseconds",
+        "getDay",
+      ];
+      const lifespan = 60;
+      const nowSec = () => ~~(Date.now() / 1000);
+
+      const genTimePair = ({ type, y, mon, day, hour, min, tm = TM } = {}) => {
+        const local = new Date();
+        const offset = local.getTimezoneOffset();
+        const [Y, M, D, h, m, s, ms, d] = tm.map((f) => local[f]());
+
+        let [sY, sM, sD] = [y ?? Y, mon ?? M, day ?? D];
+        let [eY, eM, eD] = [y ?? Y, mon ?? M, day ?? D];
+
+        type === "week" && ([sD, eD] = [D - d, D - d + 6]);
+        type === "month" && ([sD, eM, eD] = [1, M + 1, 0]);
+        type === "year" && ([sM, sD, eY, eM, eD] = [0, 1, Y + 1, 0, 0]);
+        type === "life" && ([eY] = [sY + lifespan]);
+
+        const start = Date.UTC(sY, sM, sD, 0, 0 + offset, 0, 0);
+        const end = Date.UTC(eY, eM, eD, 23, 59 + offset, 59, 999);
+        return [start, end];
+      };
+
+      const getPercent = ([start, end], fixed = 3) => {
+        const now = Date.now();
+        // console.log(new Date(start), new Date(now), new Date(end));
+        const percent = ((now - start) / (end - start)) * 100;
+        return percent.toFixed(fixed);
+      };
+
+      function getDimensions() {
+        return [
+          { name: "一天", percent: `${getPercent(genTimePair())}%` },
+          {
+            name: "一周",
+            percent: `${getPercent(genTimePair({ type: "week" }), 4)}%`,
+          },
+          {
+            name: "一月",
+            percent: `${getPercent(genTimePair({ type: "month" }), 5)}%`,
+          },
+          {
+            name: "一年",
+            percent: `${getPercent(genTimePair({ type: "year" }), 6)}%`,
+          },
+          {
+            name: "一生",
+            percent: `${getPercent(
+              genTimePair({ type: "life", y: 1991, mon: 10, day: 18 }),
+              7
+            )}%`,
+          },
+        ];
+      }
+
+      Alpine.store("progress", {
+        timestamp: nowSec(),
+        dimensions: getDimensions(),
+      });
+      Alpine.start();
+
+      const tick = () => {
+        Alpine.store("progress").timestamp = nowSec();
+        Alpine.store("progress").dimensions = getDimensions();
+        setTimeout(tick, 1000);
+      };
+      setTimeout(tick, 0);
+
+      function fetchBingImage() {
+          fetch("https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1", {
+            mode: "no-cors"
+          })
+          // .then(res => res.json())
+          .then(r => console.log(r))
+      }
+
+      fetchBingImage();
+    </script>
+  </body>
+</html>
